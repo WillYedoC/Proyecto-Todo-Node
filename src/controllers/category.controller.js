@@ -148,7 +148,6 @@ const deleteCategory = async (req, res) => {
       return res.status(404).json({ error: 'Categoría no encontrada' });
     }
 
-    // Verificar si tiene tareas asociadas
     const [tasks] = await pool.query(
       'SELECT id FROM tasks WHERE category_id = ?',
       [id]
