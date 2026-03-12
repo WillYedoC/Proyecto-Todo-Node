@@ -31,14 +31,20 @@ const createUser = async (req, res) => {
       [id, name, email, hashedPassword]
     );
 
+    const access_token = jwt.sign(
+      { id, name, email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
     return res.status(201).json({
-      message: 'Usuario creado exitosamente',
+      message: 'Usuario registrado exitosamente',
+      access_token,
       user: { id, name, email }
     });
 
   } catch (error) {
-    console.error('Error al crear usuario:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error interno al crear un usuario' });
   }
 };
 
