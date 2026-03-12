@@ -1,8 +1,8 @@
 const pool = require('../db/connection');
 const { v4: uuidv4 } = require('uuid');
-const { tagDecorator, tagListDecorator } = require('../decorators/tag.decorator');
+const { tagDecorator} = require('../decorators/tag.decorator');
 
-const createTag = async (req, res) => {
+const store = async (req, res) => {
   const { name } = req.body;
   const user_id = req.user.id;
 
@@ -42,7 +42,7 @@ const createTag = async (req, res) => {
   }
 };
 
-const getTags = async (req, res) => {
+const index = async (req, res) => {
   const user_id = req.user.id;
 
   try {
@@ -52,7 +52,7 @@ const getTags = async (req, res) => {
     );
 
     return res.status(200).json({
-      tags: tagListDecorator(rows)
+      tags: rows.map(tagDecorator)
     });
 
   } catch (error) {
@@ -61,7 +61,7 @@ const getTags = async (req, res) => {
   }
 };
 
-const getTagById = async (req, res) => {
+const show = async (req, res) => {
   const { id } = req.params;
   const user_id = req.user.id;
 
@@ -85,7 +85,7 @@ const getTagById = async (req, res) => {
   }
 };
 
-const updateTag = async (req, res) => {
+const update = async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
   const user_id = req.user.id;
@@ -134,7 +134,7 @@ const updateTag = async (req, res) => {
   }
 };
 
-const deleteTag = async (req, res) => {
+const destroy = async (req, res) => {
   const { id } = req.params;
   const user_id = req.user.id;
 
@@ -175,9 +175,9 @@ const deleteTag = async (req, res) => {
 };
 
 module.exports = {
-  createTag,
-  getTags,
-  getTagById,
-  updateTag,
-  deleteTag
+  store,
+  index,
+  show,
+  update,
+  destroy
 };

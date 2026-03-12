@@ -4,7 +4,4 @@ const tagDecorator = (tag) => ({
   createdAt: tag.created_at,
 });
 
-const tagListDecorator = (tags) => 
-  tags.map(tagDecorator);
-
-module.exports = { tagDecorator, tagListDecorator };
+module.exports = { tagDecorator};
