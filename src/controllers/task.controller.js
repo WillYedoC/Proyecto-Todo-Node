@@ -1,6 +1,6 @@
 const pool = require('../db/connection');
 const { v4: uuidv4 } = require('uuid');
-const { taskDecorator, taskListDecorator } = require('../decorators/task.decorator');
+const { taskDecorator} = require('../decorators/task.decorator');
 
 const getTaskTags = async (task_id) => {
   const [tags] = await pool.query(
@@ -29,7 +29,7 @@ const getFullTask = async (task_id) => {
   return task;
 };
 
-const createTask = async (req, res) => {
+const store = async (req, res) => {
   const { title, description, status, category_id, tag_ids } = req.body;
   const user_id = req.user.id;
 
@@ -67,7 +67,7 @@ const createTask = async (req, res) => {
     await pool.query(
       `INSERT INTO tasks (id, title, description, status, category_id, user_id) 
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, title, description || null, status || 'pending', category_id || null, user_id]
+      [id, title, description || null, status || false, category_id || null, user_id]
     );
 
     if (tag_ids && tag_ids.length > 0) {
@@ -86,12 +86,11 @@ const createTask = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al crear tarea:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error al crear tarea' });
   }
 };
 
-const getTasks = async (req, res) => {
+const index = async (req, res) => {
   const user_id = req.user.id;
 
   try {
@@ -112,16 +111,15 @@ const getTasks = async (req, res) => {
     );
 
     return res.status(200).json({
-      tasks: taskListDecorator(tasks)
+      tasks: rows.map(taskDecorator)
     });
 
   } catch (error) {
-    console.error('Error al listar tareas:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error al listar tareas' });
   }
 };
 
-const getTaskById = async (req, res) => {
+const show = async (req, res) => {
   const { id } = req.params;
   const user_id = req.user.id;
 
@@ -142,12 +140,11 @@ const getTaskById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al obtener tarea:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error al obtener tarea' });
   }
 };
 
-const updateTask = async (req, res) => {
+const update = async (req, res) => {
   const { id } = req.params;
   const { title, description, status, category_id, tag_ids } = req.body;
   const user_id = req.user.id;
@@ -156,9 +153,9 @@ const updateTask = async (req, res) => {
     return res.status(400).json({ error: 'El título es requerido' });
   }
 
-  const validStatus = ['pending', 'completed'];
+  const validStatus = [true, false];
   if (status && !validStatus.includes(status)) {
-    return res.status(400).json({ error: 'El estado debe ser pending o completed' });
+    return res.status(400).json({ error: 'El estado debe ser true o false' });
   }
 
   try {
@@ -195,7 +192,7 @@ const updateTask = async (req, res) => {
       `UPDATE tasks 
        SET title = ?, description = ?, status = ?, category_id = ?
        WHERE id = ? AND user_id = ?`,
-      [title, description || null, status || 'pending', category_id || null, id, user_id]
+      [title, description || null, status || false, category_id || null, id, user_id]
     );
 
     await pool.query('DELETE FROM tags_tasks WHERE task_id = ?', [id]);
@@ -216,12 +213,11 @@ const updateTask = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al actualizar tarea:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error al actualizar tarea' });
   }
 };
 
-const deleteTask = async (req, res) => {
+const destroy = async (req, res) => {
   const { id } = req.params;
   const user_id = req.user.id;
 
@@ -247,15 +243,14 @@ const deleteTask = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al eliminar tarea:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error al eliminar tarea' });
   }
 };
 
 module.exports = {
-  createTask,
-  getTasks,
-  getTaskById,
-  updateTask,
-  deleteTask
-};
+  store,
+  index,
+  show,
+  update,
+  destroy
+}

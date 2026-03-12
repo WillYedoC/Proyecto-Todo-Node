@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id VARCHAR(36) PRIMARY KEY,
   title VARCHAR(150) NOT NULL,
   description TEXT,
-  status ENUM('pending', 'completed') DEFAULT 'pending',
+  status BOOLEAN DEFAULT FALSE,
   category_id VARCHAR(36),
   user_id VARCHAR(36) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

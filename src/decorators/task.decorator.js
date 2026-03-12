@@ -11,7 +11,4 @@ const taskDecorator = (task) => ({
   createdAt: task.created_at,
 });
 
-const taskListDecorator = (tasks) =>
-  tasks.map(taskDecorator);
-
-module.exports = { taskDecorator, taskListDecorator };
+module.exports = { taskDecorator};
