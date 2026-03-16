@@ -4,6 +4,9 @@ require('./db/connection');
 
 const app = express();
 app.use(express.json());
+// Rutas
+const categoryRoutes = require('./routes/category.routes');
+app.use('/api/categories', categoryRoutes);
 
 // Rutas
 const userRoutes = require('./routes/user.routes');
