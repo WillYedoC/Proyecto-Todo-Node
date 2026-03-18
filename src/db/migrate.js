@@ -6,6 +6,7 @@ const migrationsDir = path.join(__dirname, 'migrations');
 
 const migrationFiles = [
   'users.sql',
+  'category.sql',
 ];
 
 const runMigrations = async () => {

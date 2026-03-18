@@ -9,6 +9,8 @@ const {
   destroy
 } = require('../controllers/category.controller');
 
+router.use(authMiddleware);
+
 router.post('/', store);
 router.get('/', index);
 router.get('/:id', show);

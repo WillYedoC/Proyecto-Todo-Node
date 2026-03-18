@@ -8,6 +8,7 @@ const {
   update,
   destroy
 } = require('../controllers/tag.controller');
+router.use(authMiddleware);
 
 router.post('/', store);
 router.get('/', index);

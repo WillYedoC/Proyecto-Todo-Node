@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const { tagDecorator} = require('../decorators/tag.decorator');
 
 const store = async (req, res) => {
-  const { name } = req.body;
+  const { name, color } = req.body;
   const user_id = req.user.id;
 
   if (!name) {
@@ -21,9 +21,10 @@ const store = async (req, res) => {
     }
 
     const id = uuidv4();
+
     await pool.query(
-      'INSERT INTO tags (id, name, user_id) VALUES (?, ?, ?)',
-      [id, name, user_id]
+      'INSERT INTO tags (id, name, color, user_id) VALUES (?, ?, ?, ?)',
+      [id, name, color || null, user_id]
     );
 
     const [rows] = await pool.query(
@@ -37,27 +38,52 @@ const store = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al crear etiqueta:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: `Èrror al crear etiquetas ${error.message}` });
   }
 };
 
 const index = async (req, res) => {
   const user_id = req.user.id;
 
+  if (req.query.per_page === 'all') {
+    try {
+      const [rows] = await pool.query(
+        'SELECT * FROM tags WHERE user_id = ? ORDER BY created_at DESC',
+        [user_id]
+      );
+      return res.status(200).json({ data: rows.map(tagDecorator) });
+    } catch (error) {
+      return res.status(500).json({ error: `Error al listar etiquetas ${error.message}` });
+    }
+  }
+
+  const page     = Math.max(1, parseInt(req.query.page) || 1);
+  const per_page = Math.min(100, parseInt(req.query.per_page) || 10);
+  const offset   = (page - 1) * per_page;
+
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM tags WHERE user_id = ? ORDER BY created_at DESC',
+    const [[{ total }]] = await pool.query(
+      'SELECT COUNT(*) AS total FROM tags WHERE user_id = ?',
       [user_id]
     );
 
+    const [rows] = await pool.query(
+      'SELECT * FROM tags WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [user_id, per_page, offset]
+    );
+
+    const last_page = Math.ceil(total / per_page) || 1;
+
     return res.status(200).json({
-      tags: rows.map(tagDecorator)
+      data: rows.map(tagDecorator),
+      total,
+      per_page,
+      current_page: page,
+      last_page,
     });
 
   } catch (error) {
-    console.error('Error al listar etiquetas:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: `Error al listar etiquetas ${error.message}` });
   }
 };
 
@@ -66,6 +92,7 @@ const show = async (req, res) => {
   const user_id = req.user.id;
 
   try {
+
     const [rows] = await pool.query(
       'SELECT * FROM tags WHERE id = ? AND user_id = ?',
       [id, user_id]
@@ -80,14 +107,13 @@ const show = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al obtener etiqueta:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: `Èrror al obtener etiquetas ${error.message}` });
   }
 };
 
 const update = async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, color } = req.body;
   const user_id = req.user.id;
 
   if (!name) {
@@ -95,6 +121,7 @@ const update = async (req, res) => {
   }
 
   try {
+
     const [existing] = await pool.query(
       'SELECT id FROM tags WHERE id = ? AND user_id = ?',
       [id, user_id]
@@ -114,8 +141,8 @@ const update = async (req, res) => {
     }
 
     await pool.query(
-      'UPDATE tags SET name = ? WHERE id = ? AND user_id = ?',
-      [name, id, user_id]
+      'UPDATE tags SET name = ?, color = ? WHERE id = ? AND user_id = ?',
+      [name, color || null, id, user_id]
     );
 
     const [rows] = await pool.query(
@@ -129,8 +156,7 @@ const update = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al actualizar etiqueta:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: `Error al actualizar etiquetas ${error.message}` });
   }
 };
 
@@ -139,6 +165,7 @@ const destroy = async (req, res) => {
   const user_id = req.user.id;
 
   try {
+
     const [existing] = await pool.query(
       'SELECT id FROM tags WHERE id = ? AND user_id = ?',
       [id, user_id]
@@ -154,8 +181,8 @@ const destroy = async (req, res) => {
     );
 
     if (tasks.length > 0) {
-      return res.status(409).json({ 
-        error: 'No se puede eliminar, la etiqueta tiene tareas asociadas' 
+      return res.status(409).json({
+        error: 'No se puede eliminar, la etiqueta tiene tareas asociadas'
       });
     }
 
@@ -169,8 +196,7 @@ const destroy = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al eliminar etiqueta:', error.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: `Error al eliminar etiqueta ${error.message}` });
   }
 };
 

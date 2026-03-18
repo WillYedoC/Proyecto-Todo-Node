@@ -27,7 +27,7 @@ const store = async (req, res) => {
     );
 
     const [rows] = await pool.query(
-      'SELECT * FROM categories WHERE id = ?', 
+      'SELECT * FROM categories WHERE id = ?',
       [id]
     );
 
@@ -45,14 +45,41 @@ const store = async (req, res) => {
 const index = async (req, res) => {
   const user_id = req.user.id;
 
+  if (req.query.per_page === 'all') {
+    try {
+      const [rows] = await pool.query(
+        'SELECT * FROM categories WHERE user_id = ? ORDER BY created_at DESC',
+        [user_id]
+      );
+      return res.status(200).json({ data: rows.map(categoryDecorator) });
+    } catch (error) {
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+
+  const page     = Math.max(1, parseInt(req.query.page)     || 1);
+  const per_page = Math.min(100, parseInt(req.query.per_page) || 10);
+  const offset   = (page - 1) * per_page;
+
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM categories WHERE user_id = ? ORDER BY created_at DESC',
+    const [[{ total }]] = await pool.query(
+      'SELECT COUNT(*) AS total FROM categories WHERE user_id = ?',
       [user_id]
     );
 
+    const [rows] = await pool.query(
+      'SELECT * FROM categories WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [user_id, per_page, offset]
+    );
+
+    const last_page = Math.ceil(total / per_page) || 1;
+
     return res.status(200).json({
-      categories: rows.map(category => categoryDecorator(category))
+      data:         rows.map(categoryDecorator),
+      total,
+      per_page,
+      current_page: page,
+      last_page,
     });
 
   } catch (error) {
@@ -64,7 +91,6 @@ const index = async (req, res) => {
 const show = async (req, res) => {
   const { id } = req.params;
   const user_id = req.user.id;
-
   try {
     const [rows] = await pool.query(
       'SELECT * FROM categories WHERE id = ? AND user_id = ?',
@@ -75,8 +101,8 @@ const show = async (req, res) => {
       return res.status(404).json({ error: 'Categoría no encontrada' });
     }
 
-    return res.status(200).json({ 
-      category: categoryDecorator(rows[0]) 
+    return res.status(200).json({
+      category: categoryDecorator(rows[0])
     });
 
   } catch (error) {
@@ -119,7 +145,7 @@ const update = async (req, res) => {
     );
 
     const [rows] = await pool.query(
-      'SELECT * FROM categories WHERE id = ?', 
+      'SELECT * FROM categories WHERE id = ?',
       [id]
     );
 
@@ -154,8 +180,8 @@ const destroy = async (req, res) => {
     );
 
     if (tasks.length > 0) {
-      return res.status(409).json({ 
-        error: 'No se puede eliminar, la categoría tiene tareas asociadas' 
+      return res.status(409).json({
+        error: 'No se puede eliminar, la categoría tiene tareas asociadas'
       });
     }
 
@@ -164,8 +190,8 @@ const destroy = async (req, res) => {
       [id, user_id]
     );
 
-    return res.status(200).json({ 
-      message: 'Categoría eliminada exitosamente' 
+    return res.status(200).json({
+      message: 'Categoría eliminada exitosamente'
     });
 
   } catch (error) {
@@ -174,7 +200,7 @@ const destroy = async (req, res) => {
   }
 };
 
-module.exports = { 
+module.exports = {
   store,
   index,
   show,

@@ -12,6 +12,7 @@ const createUser = async (req, res) => {
   }
 
   try {
+
     const [existing] = await pool.query(
       'SELECT id FROM users WHERE email = ?', 
       [email]
@@ -44,8 +45,36 @@ const createUser = async (req, res) => {
     });
 
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ error: 'Error interno al crear un usuario' });
   }
 };
 
-module.exports = { createUser };
+const profile = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name, email, created_at FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const user = rows[0];
+
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.created_at
+      }
+    });
+
+  } catch (error) {
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+module.exports = { createUser,profile };
