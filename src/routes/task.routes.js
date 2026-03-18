@@ -8,7 +8,7 @@ const {
   update,
   destroy
 } = require('../controllers/task.controller');
-
+router.use(authMiddleware);
 router.post('/', store);
 router.get('/', index);
 router.get('/:id', show);
