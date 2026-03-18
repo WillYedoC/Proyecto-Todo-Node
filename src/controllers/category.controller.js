@@ -44,6 +44,19 @@ const store = async (req, res) => {
 
 const index = async (req, res) => {
   const user_id = req.user.id;
+
+  if (req.query.per_page === 'all') {
+    try {
+      const [rows] = await pool.query(
+        'SELECT * FROM categories WHERE user_id = ? ORDER BY created_at DESC',
+        [user_id]
+      );
+      return res.status(200).json({ data: rows.map(categoryDecorator) });
+    } catch (error) {
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+
   const page     = Math.max(1, parseInt(req.query.page)     || 1);
   const per_page = Math.min(100, parseInt(req.query.per_page) || 10);
   const offset   = (page - 1) * per_page;
