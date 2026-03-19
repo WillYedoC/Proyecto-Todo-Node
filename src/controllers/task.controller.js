@@ -32,36 +32,57 @@ const getFullTask = async (task_id) => {
 };
 
 const store = async (req, res) => {
-  const { title, description, status, category_id, tag_ids } = req.body;
   const user_id = req.user.id;
 
-  if (!title) {
-    return res.status(400).json({ error: "El título es requerido" });
-  }
+  const {
+    title,
+    description = null,
+    is_completed = false,
+    category_id,
+    tags = []
+  } = req.body;
 
   try {
+    if (!title || typeof title !== "string") {
+      return res.status(400).json({
+        error: "El título es obligatorio"
+      });
+    }
+
+    if (title.length > 255) {
+      return res.status(400).json({
+        error: "El título no puede exceder 255 caracteres"
+      });
+    }
+
     if (category_id) {
-      const [cat] = await pool.query(
+      const [category] = await pool.query(
         "SELECT id FROM categories WHERE id = ? AND user_id = ?",
-        [category_id, user_id],
+        [category_id, user_id]
       );
 
-      if (cat.length === 0) {
-        return res.status(404).json({ error: "Categoría no encontrada" });
+      if (category.length === 0) {
+        return res.status(404).json({
+          error: "La categoría seleccionada no existe o no te pertenece"
+        });
       }
     }
 
-    const tag_ids = tags || [];
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({
+        error: "Las etiquetas deben ser un array"
+      });
+    }
 
-    if (tag_ids.length > 0) {
+    if (tags.length > 0) {
       const [foundTags] = await pool.query(
         "SELECT id FROM tags WHERE id IN (?) AND user_id = ?",
-        [tag_ids, user_id],
+        [tags, user_id]
       );
 
-      if (foundTags.length !== tag_ids.length) {
+      if (foundTags.length !== tags.length) {
         return res.status(404).json({
-          error: "Una o más etiquetas no encontradas",
+          error: "Una o más etiquetas no existen o no te pertenecen"
         });
       }
     }
@@ -71,33 +92,26 @@ const store = async (req, res) => {
     await pool.query(
       `INSERT INTO tasks (id, title, description, is_completed, category_id, user_id)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        title,
-        description || null,
-        is_completed || false,
-        category_id || null,
-        user_id,
-      ],
+      [id, title, description, is_completed, category_id || null, user_id]
     );
+    if (tags.length > 0) {
+      const tagValues = tags.map(tag_id => [tag_id, id]);
 
-    if (tag_ids.length > 0) {
-      const tagValues = tag_ids.map((tag_id) => [tag_id, id]);
-
-      await pool.query("INSERT INTO tags_tasks (tag_id, task_id) VALUES ?", [
-        tagValues,
-      ]);
+      await pool.query(
+        "INSERT INTO tags_tasks (tag_id, task_id) VALUES ?",
+        [tagValues]
+      );
     }
-
     const task = await getFullTask(id);
 
     return res.status(201).json({
       message: "Tarea creada exitosamente",
-      task: taskDecorator(task),
+      data: taskDecorator(task)
     });
   } catch (error) {
+    console.error("Error al crear tarea:", error.message);
     return res.status(500).json({
-      error: `Error al crear tarea ${error.message}`,
+      error: "Error interno del servidor"
     });
   }
 };
@@ -170,14 +184,17 @@ const index = async (req, res) => {
     const last_page = Math.ceil(total / per_page) || 1;
 
     return res.status(200).json({
-      data: rows.map(taskDecorator),
+      data: tasks.map(taskDecorator),
       total,
       per_page,
       current_page: page,
       last_page,
     });
+
   } catch (error) {
-    return res.status(500).json({ error: `Error al listar tareas: ${error.message}` });
+    return res.status(500).json({
+      error: `Error al listar tareas: ${error.message}`,
+    });
   }
 };
 
@@ -211,19 +228,24 @@ const show = async (req, res) => {
 
 const update = async (req, res) => {
   const { id } = req.params;
-  const { title, description, is_completed, category_id, tags } = req.body;
   const user_id = req.user.id;
 
-  if (!title) {
-    return res.status(400).json({
-      error: "El título es requerido",
-    });
-  }
-
+  const {
+    title,
+    description,
+    is_completed,
+    category_id,
+    tags
+  } = req.body;
+  console.log(    title,
+    description,
+    is_completed,
+    category_id,
+    tags);
   try {
     const [existing] = await pool.query(
       "SELECT id FROM tasks WHERE id = ? AND user_id = ?",
-      [id, user_id],
+      [id, user_id]
     );
 
     if (existing.length === 0) {
@@ -232,68 +254,109 @@ const update = async (req, res) => {
       });
     }
 
-    if (category_id) {
+    if (title !== undefined) {
+      if (!title || typeof title !== "string") {
+        return res.status(400).json({
+          error: "El título es obligatorio",
+        });
+      }
+
+      if (title.length > 255) {
+        return res.status(400).json({
+          error: "El título no puede exceder 255 caracteres",
+        });
+      }
+    }
+
+    if (category_id !== undefined && category_id !== null) {
       const [cat] = await pool.query(
         "SELECT id FROM categories WHERE id = ? AND user_id = ?",
-        [category_id, user_id],
+        [category_id, user_id]
       );
 
       if (cat.length === 0) {
         return res.status(404).json({
-          error: "Categoría no encontrada",
+          error: "La categoría seleccionada no existe o no te pertenece",
         });
       }
     }
 
-    const tag_ids = tags || [];
+    if (tags !== undefined) {
+      if (!Array.isArray(tags)) {
+        return res.status(400).json({
+          error: "Las etiquetas deben ser un array",
+        });
+      }
 
-    if (tag_ids.length > 0) {
-      const [foundTags] = await pool.query(
-        "SELECT id FROM tags WHERE id IN (?) AND user_id = ?",
-        [tag_ids, user_id],
+      if (tags.length > 0) {
+        const [foundTags] = await pool.query(
+          "SELECT id FROM tags WHERE id IN (?) AND user_id = ?",
+          [tags, user_id]
+        );
+
+        if (foundTags.length !== tags.length) {
+          return res.status(404).json({
+            error: "Una o más etiquetas no existen o no te pertenecen",
+          });
+        }
+      }
+    }
+
+    const fields = [];
+    const values = [];
+
+    if (title !== undefined) {
+      fields.push("title = ?");
+      values.push(title);
+    }
+
+    if (description !== undefined) {
+      fields.push("description = ?");
+      values.push(description);
+    }
+
+    if (is_completed !== undefined) {
+      fields.push("is_completed = ?");
+      values.push(is_completed);
+    }
+
+    if (category_id !== undefined) {
+      fields.push("category_id = ?");
+      values.push(category_id);
+    }
+
+    if (fields.length > 0) {
+      await pool.query(
+        `UPDATE tasks SET ${fields.join(", ")} WHERE id = ? AND user_id = ?`,
+        [...values, id, user_id]
       );
-
-      if (foundTags.length !== tag_ids.length) {
-        return res.status(404).json({
-          error: "Una o más etiquetas no encontradas",
-        });
-      }
     }
 
-    await pool.query(
-      `UPDATE tasks
-       SET title = ?, description = ?, is_completed = ?, category_id = ?
-       WHERE id = ? AND user_id = ?`,
-      [
-        title,
-        description || null,
-        is_completed || false,
-        category_id || null,
-        id,
-        user_id,
-      ],
-    );
+    if (tags !== undefined) {
+      await pool.query("DELETE FROM tags_tasks WHERE task_id = ?", [id]);
 
-    await pool.query("DELETE FROM tags_tasks WHERE task_id = ?", [id]);
+      if (tags.length > 0) {
+        const tagValues = tags.map(tag_id => [tag_id, id]);
 
-    if (tag_ids.length > 0) {
-      const tagValues = tag_ids.map((tag_id) => [tag_id, id]);
-
-      await pool.query("INSERT INTO tags_tasks (tag_id, task_id) VALUES ?", [
-        tagValues,
-      ]);
+        await pool.query(
+          "INSERT INTO tags_tasks (tag_id, task_id) VALUES ?",
+          [tagValues]
+        );
+      }
     }
 
     const task = await getFullTask(id);
 
     return res.status(200).json({
       message: "Tarea actualizada exitosamente",
-      task: taskDecorator(task),
+      data: taskDecorator(task),
     });
+
   } catch (error) {
+    console.error("Error al actualizar tarea:", error.message);
 
     return res.status(500).json({
-      error: `Error al actulizar tarea: ${error.message}`,
+      error: "Error interno del servidor",
     });
   }
 };
