@@ -2,7 +2,7 @@ const taskDecorator = (task) => ({
   id: task.id,
   title: task.title,
   description: task.description,
-  status: task.status,
+  is_completed: task.is_completed,
   category: task.category_name ? {
     id: task.category_id,
     name: task.category_name

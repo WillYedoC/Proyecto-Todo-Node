@@ -1,43 +1,39 @@
-const express = require('express');
-require('dotenv').config();
-require('./db/connection');
+const express = require("express");
+require("dotenv").config();
+require("./db/connection");
+const cors = require("cors");
+const allowedOrigins = ["http://localhost:3000", "http://localhost:5173"];
+corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("No permitido por CORS"));
+    }
+  },
+  credentials: true,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
 const app = express();
 app.use(express.json());
+app.use(cors(corsOptions));
 // Rutas
-const categoryRoutes = require('./routes/category.routes');
-app.use('/api/categories', categoryRoutes);
+const authRoutes = require("./routes/auth.routes");
+const userRoutes = require("./routes/user.routes");
+const categoryRoutes = require("./routes/category.routes");
+const tagRoutes = require("./routes/tag.routes");
+const taskRoutes = require("./routes/task.routes");
 
-// Rutas
-const userRoutes = require('./routes/user.routes');
-app.use('/users', userRoutes);
-
-// Rutas
-const userRoutes = require('./routes/user.routes');
-const categoryRoutes = require('./routes/category.routes');
-const tagRoutes = require('./routes/tag.routes');
-
-app.use('/users', userRoutes);
-app.use('/categories', categoryRoutes);
-app.use('/tags', tagRoutes);
+app.use("/api", authRoutes);
+app.use("/api", userRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/tags", tagRoutes);
+app.use("/api/tasks", taskRoutes);
 
 app.get((req, res) => {
-  res.status(404).json({ error: 'Ruta no encontrada' });
-});
-
-// Rutas
-const userRoutes = require('./routes/user.routes');
-const categoryRoutes = require('./routes/category.routes');
-const tagRoutes = require('./routes/tag.routes');
-const taskRoutes = require('./routes/task.routes');
-
-app.use('/users', userRoutes);
-app.use('/categories', categoryRoutes);
-app.use('/tags', tagRoutes);
-app.use('tasks',tagRoutes);
-
-app.get((req, res) => {
-  res.status(404).json({ error: 'Ruta no encontrada' });
+  res.status(404).json({ error: "Ruta no encontrada" });
 });
 
 const PORT = process.env.PORT || 3000;
